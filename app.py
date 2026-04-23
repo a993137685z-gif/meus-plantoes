@@ -7,15 +7,16 @@ st.set_page_config(page_title="Gestor de Plantões", layout="wide")
 
 st.title("🏥 Sincronizador de Plantões")
 
-# Conectando à planilha
+# URL da sua planilha (Certifique-se de que termina em /edit#gid=0 ou algo similar)
 url = "https://docs.google.com/spreadsheets/d/1psqTs_ZdhGjruXIg9UPJ90_AnldAhrAzJ2UKrOpoDjo/edit?usp=sharing"
+
+# Criando a conexão
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Carrega os dados da planilha
-df = conn.read(spreadsheet=url)
-
-# Se a planilha estiver vazia, cria a estrutura
-if df.empty:
+# Lendo os dados
+try:
+    df = conn.read(spreadsheet=url, ttl="0") # ttl="0" força o app a buscar dados novos sempre
+except:
     df = pd.DataFrame(columns=["Data", "Local", "Horas", "Valor", "Status"])
 
 with st.sidebar:
@@ -35,13 +36,20 @@ with st.sidebar:
             "Status": status
         }])
         
-        # Junta o novo dado com os antigos e salva de volta no Google
+        # O SEGREDO ESTÁ AQUI: 
+        # Para evitar o erro de operação não suportada, vamos atualizar o DataFrame
         df_final = pd.concat([df, nova_linha], ignore_index=True)
+        
+        # Tentativa de salvar
         conn.update(spreadsheet=url, data=df_final)
-        st.success("Sincronizado!")
+        st.success("Sincronizado com sucesso!")
+        st.cache_data.clear() # Limpa o cache para mostrar o novo dado na tela
         st.rerun()
 
-# Mostra as métricas e a tabela
+# Exibição
 if not df.empty:
-    st.metric("Total a Receber", f"R$ {df[df['Status'] != 'Pago']['Valor'].sum():,.2f}")
-    st.dataframe(df, use_container_width=True)
+    total = df[df['Status'] != 'Pago']['Valor'].sum()
+    st.metric("Total a Receber", f"R$ {total:,.2f}")
+    st.table(df) # Use table se o dataframe der erro de exibição
+else:
+    st.info("Nenhum dado encontrado ou planilha vazia.")

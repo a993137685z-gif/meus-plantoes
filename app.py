@@ -33,7 +33,6 @@ with st.sidebar:
             "Status": status
         }])
         
-       
         df_final = pd.concat([df, nova_linha], ignore_index=True)
         
         conn.update(spreadsheet=url, data=df_final)
@@ -41,7 +40,6 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-# Exibição
 if not df.empty:
     total = df[df['Status'] != 'Pago']['Valor'].sum()
     st.metric("Total a Receber", f"R$ {total:,.2f}")
